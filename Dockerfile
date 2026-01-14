@@ -1,20 +1,20 @@
-# Use Node.js LTS
-FROM node:18-alpine
+# 1. Use Node 20 to satisfy Mongoose requirements
+FROM node:20-alpine
 
-# Set working directory
+# 2. Set the working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# 3. Copy package files FROM the backend folder
+COPY backend/package*.json ./
 
-# Install dependencies
+# 4. Install dependencies
 RUN npm install
 
-# Copy rest of the app
-COPY . .
+# 5. Copy the rest of the backend files
+COPY backend/ .
 
-# Expose port (Back4App uses 8080)
+# 6. EXPOSE 5000 to match your .env and code
 EXPOSE 5000
 
-# Start the server
+# 7. Start the server
 CMD ["npm", "start"]
