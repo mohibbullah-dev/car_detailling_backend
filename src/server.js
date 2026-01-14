@@ -57,13 +57,23 @@ const app = express();
  * CORS (safe for local + Vercel)
  * If you want strict later, set FRONTEND_URL in env and use it as origin.
  */
+const allowedOrigins = [
+  "https://car-detailing-three.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
 app.use(
   cors({
-    origin: true,
+    origin: (origin, cb) => {
+      // allow Postman / server-to-server calls with no origin
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
     credentials: true,
   })
 );
-
 app.use(express.json({ limit: "2mb" }));
 
 // Health routes (Back4App health check can use /health or /)
