@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Expose port (Back4App uses 8080)
-EXPOSE 8080
+EXPOSE 5000
 
 # Start the server
 CMD ["npm", "start"]
