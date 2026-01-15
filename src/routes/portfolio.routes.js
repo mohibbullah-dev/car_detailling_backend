@@ -87,6 +87,68 @@ router.post(
   }
 );
 
+// Admin: update portfolio item (text + optional images)
+router.put(
+  "/:id",
+  requireAdmin,
+  upload.fields([
+    { name: "before", maxCount: 1 },
+    { name: "after", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const item = await PortfolioItem.findById(req.params.id);
+      if (!item) return res.status(404).json({ message: "Not found" });
+
+      let { title, location, notes, tags } = req.body || {};
+
+      // update text fields only if provided
+      if (title !== undefined) item.title = title;
+      if (location !== undefined) item.location = location;
+      if (notes !== undefined) item.notes = notes;
+
+      // tags can be "a,b,c"
+      if (tags !== undefined) {
+        if (typeof tags === "string") {
+          tags = tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+        }
+        item.tags = Array.isArray(tags) ? tags : [];
+      }
+
+      const folder = "portfolio_uploads";
+
+      // optional image replace
+      const beforeFile = req.files?.before?.[0];
+      const afterFile = req.files?.after?.[0];
+
+      if (beforeFile) {
+        if (item.beforePublicId)
+          await cloudinary.uploader.destroy(item.beforePublicId);
+        const beforeUp = await uploadToCloudinary(beforeFile.buffer, folder);
+        item.beforeUrl = beforeUp.url;
+        item.beforePublicId = beforeUp.publicId;
+      }
+
+      if (afterFile) {
+        if (item.afterPublicId)
+          await cloudinary.uploader.destroy(item.afterPublicId);
+        const afterUp = await uploadToCloudinary(afterFile.buffer, folder);
+        item.afterUrl = afterUp.url;
+        item.afterPublicId = afterUp.publicId;
+      }
+
+      await item.save();
+      res.json(item);
+    } catch (err) {
+      console.error("Update failed:", err);
+      res.status(500).json({ message: "Update failed", error: err.message });
+    }
+  }
+);
+
 // Admin: delete portfolio item (optional)
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {
