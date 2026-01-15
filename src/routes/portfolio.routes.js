@@ -34,6 +34,7 @@ router.post(
     { name: "after", maxCount: 1 },
   ]),
   async (req, res) => {
+    console.log("hello i am upload function");
     try {
       const { title, location, notes } = req.body || {};
       let { tags } = req.body || {};
