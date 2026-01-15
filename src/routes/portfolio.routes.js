@@ -93,14 +93,17 @@ router.delete("/:id", requireAdmin, async (req, res) => {
     const item = await PortfolioItem.findById(req.params.id);
     if (!item) return res.status(404).json({ message: "Not found" });
 
-    // remove from cloudinary
-    await cloudinary.uploader.destroy(item.beforePublicId);
-    await cloudinary.uploader.destroy(item.afterPublicId);
+    // remove from cloudinary (only if ids exist)
+    if (item.beforePublicId)
+      await cloudinary.uploader.destroy(item.beforePublicId);
+    if (item.afterPublicId)
+      await cloudinary.uploader.destroy(item.afterPublicId);
 
     await item.deleteOne();
     res.json({ message: "Deleted" });
   } catch (err) {
-    res.status(500).json({ message: "Delete failed" });
+    console.error("Delete failed:", err);
+    res.status(500).json({ message: "Delete failed", error: err.message });
   }
 });
 
