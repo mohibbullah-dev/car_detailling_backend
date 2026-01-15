@@ -13,41 +13,33 @@ dotenv.config();
 const app = express();
 
 /**
- * CORS (safe for local + Vercel)
- * If you want strict later, set FRONTEND_URL in env and use it as origin.
+ * ✅ CORS for Vercel frontend + local
+ * IMPORTANT: must allow PUT/DELETE + Authorization header
  */
-// const allowedOrigins = [
-//   "https://car-detailing-three.vercel.app",
-//   "http://localhost:5173",
-//   "http://localhost:3000",
-// ];
-
-// app.use(
-//   cors({
-//     origin: (origin, cb) => {
-//       // allow Postman / server-to-server calls with no origin
-//       if (!origin) return cb(null, true);
-//       if (allowedOrigins.includes(origin)) return cb(null, true);
-//       return cb(new Error(`CORS blocked for origin: ${origin}`), false);
-//     },
-//     credentials: true,
-//   })
-// );
+const allowedOrigins = [
+  "https://car-detailing-three.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
 
 app.use(
   cors({
-    origin: [
-      "https://car-detailing-three.vercel.app",
-      "http://localhost:5173",
-      "http://localhost:3000",
-    ],
-    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // Postman/server-to-server
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// ✅ preflight for ALL routes
+app.options(/.*/, cors());
+
 app.use(express.json({ limit: "2mb" }));
 
-// Health routes (Back4App health check can use /health or /)
 app.get("/", (req, res) => res.send("API running ✅"));
 app.get("/health", (req, res) => res.json({ ok: true }));
 
@@ -60,15 +52,12 @@ async function start() {
   await connectDB();
   initCloudinary();
 
-  // mask credentials in logs
   console.log(
     "MONGO_URI loaded:",
     process.env.MONGO_URI?.replace(/:\/\/.*?:.*?@/, "://****:****@")
   );
 
-  app.listen(port, () => {
-    console.log(`✅ Server running on port ${port}`);
-  });
+  app.listen(port, () => console.log(`✅ Server running on port ${port}`));
 }
 
 start().catch((e) => {

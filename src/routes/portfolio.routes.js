@@ -7,7 +7,6 @@ import { cloudinary } from "../config/cloudinary.js";
 const router = express.Router();
 
 async function uploadToCloudinary(fileBuffer, folder) {
-  // convert buffer -> base64 data uri
   const base64 = fileBuffer.toString("base64");
   const dataUri = `data:image/jpeg;base64,${base64}`;
 
@@ -25,7 +24,7 @@ router.get("/", async (req, res) => {
   res.json(items);
 });
 
-// Admin: create new portfolio item with before/after images
+// Admin: create
 router.post(
   "/",
   requireAdmin,
@@ -34,7 +33,6 @@ router.post(
     { name: "after", maxCount: 1 },
   ]),
   async (req, res) => {
-    console.log("hello i am upload function");
     try {
       const { title, location, notes } = req.body || {};
       let { tags } = req.body || {};
@@ -54,7 +52,6 @@ router.post(
           .json({ message: "before and after images are required" });
       }
 
-      // tags can be: "Leak Fix,Emergency" or array
       if (typeof tags === "string") {
         tags = tags
           .split(",")
@@ -87,7 +84,10 @@ router.post(
   }
 );
 
-// Admin: update portfolio item (text + optional images)
+/**
+ * ✅ Admin: update (title/location/notes/tags + OPTIONAL new images)
+ * method: PUT /api/portfolio/:id
+ */
 router.put(
   "/:id",
   requireAdmin,
@@ -100,41 +100,42 @@ router.put(
       const item = await PortfolioItem.findById(req.params.id);
       if (!item) return res.status(404).json({ message: "Not found" });
 
-      let { title, location, notes, tags } = req.body || {};
+      const { title, location, notes } = req.body || {};
+      let { tags } = req.body || {};
 
-      // update text fields only if provided
-      if (title !== undefined) item.title = title;
-      if (location !== undefined) item.location = location;
-      if (notes !== undefined) item.notes = notes;
-
-      // tags can be "a,b,c"
-      if (tags !== undefined) {
-        if (typeof tags === "string") {
-          tags = tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean);
-        }
-        item.tags = Array.isArray(tags) ? tags : [];
+      if (typeof tags === "string") {
+        tags = tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
       }
+      if (!Array.isArray(tags)) tags = item.tags || [];
+
+      // update text fields (keep old if empty)
+      item.title = title ?? item.title;
+      item.location = location ?? item.location;
+      item.notes = notes ?? item.notes;
+      item.tags = tags;
 
       const folder = "portfolio_uploads";
-
-      // optional image replace
       const beforeFile = req.files?.before?.[0];
       const afterFile = req.files?.after?.[0];
 
+      // If new before image provided -> replace cloudinary
       if (beforeFile) {
-        if (item.beforePublicId)
+        if (item.beforePublicId) {
           await cloudinary.uploader.destroy(item.beforePublicId);
+        }
         const beforeUp = await uploadToCloudinary(beforeFile.buffer, folder);
         item.beforeUrl = beforeUp.url;
         item.beforePublicId = beforeUp.publicId;
       }
 
+      // If new after image provided -> replace cloudinary
       if (afterFile) {
-        if (item.afterPublicId)
+        if (item.afterPublicId) {
           await cloudinary.uploader.destroy(item.afterPublicId);
+        }
         const afterUp = await uploadToCloudinary(afterFile.buffer, folder);
         item.afterUrl = afterUp.url;
         item.afterPublicId = afterUp.publicId;
@@ -143,29 +144,25 @@ router.put(
       await item.save();
       res.json(item);
     } catch (err) {
-      console.error("Update failed:", err);
+      console.error(err);
       res.status(500).json({ message: "Update failed", error: err.message });
     }
   }
 );
 
-// Admin: delete portfolio item (optional)
+// Admin: delete
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const item = await PortfolioItem.findById(req.params.id);
     if (!item) return res.status(404).json({ message: "Not found" });
 
-    // remove from cloudinary (only if ids exist)
-    if (item.beforePublicId)
-      await cloudinary.uploader.destroy(item.beforePublicId);
-    if (item.afterPublicId)
-      await cloudinary.uploader.destroy(item.afterPublicId);
+    await cloudinary.uploader.destroy(item.beforePublicId);
+    await cloudinary.uploader.destroy(item.afterPublicId);
 
     await item.deleteOne();
     res.json({ message: "Deleted" });
   } catch (err) {
-    console.error("Delete failed:", err);
-    res.status(500).json({ message: "Delete failed", error: err.message });
+    res.status(500).json({ message: "Delete failed" });
   }
 });
 
