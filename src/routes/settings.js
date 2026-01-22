@@ -16,10 +16,9 @@
 //   res.json(settings);
 // });
 
-// export default router;
 import express from "express";
 import { Settings } from "../models/Settings.js";
-import { requireAdmin } from "../middleware/auth.js";
+import { requireAdmin } from "../middleware/auth.js"; // Corrected path
 
 const router = express.Router();
 
