@@ -1,46 +1,32 @@
-// import { Settings } from "../models/Settings.js";
-// import router from "./portfolio.routes.js";
-
-// router.get("/status", async (req, res) => {
-//   const settings = (await Settings.findOne()) || (await Settings.create({}));
-//   res.json(settings);
-// });
-
-// router.post("/toggle", protect, async (req, res) => {
-//   const { isClosed, reason } = req.body;
-//   const settings = await Settings.findOneAndUpdate(
-//     {},
-//     { isClosed, reason },
-//     { upsert: true, new: true },
-//   );
-//   res.json(settings);
-// });
-
 import express from "express";
-import { Settings } from "../models/Settings.js";
-import { requireAdmin } from "../middleware/auth.js"; // Corrected path
+import { requireAdmin } from "../middleware/auth.js";
+import { getSettings, saveSettings } from "../lib/store.js";
 
 const router = express.Router();
 
-router.get("/status", async (req, res) => {
+router.get("/status", async (_req, res) => {
   try {
-    const settings = (await Settings.findOne()) || (await Settings.create({}));
-    res.json(settings);
+    const settings = await getSettings();
+    res.json({
+      isClosed: !!settings.isClosed,
+      reason: settings.reason || "We are currently fully booked.",
+    });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Error fetching status" });
   }
 });
 
 router.post("/toggle", requireAdmin, async (req, res) => {
   try {
-    const { isClosed, reason } = req.body;
-    const settings = await Settings.findOneAndUpdate(
-      {},
-      { isClosed, reason },
-      { upsert: true, new: true },
-    );
+    const { isClosed, reason } = req.body || {};
+    const settings = await saveSettings({
+      isClosed: !!isClosed,
+      reason: reason || "We are currently fully booked.",
+    });
     res.json(settings);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Error updating status" });
   }
 });
