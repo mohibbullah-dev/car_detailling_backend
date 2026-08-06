@@ -1,11 +1,13 @@
 -- Run once in Supabase → SQL Editor (demo open policies)
+-- Fixes admin Open/Close, settings, packages, reviews, FAQs, portfolio uploads
+
 update auth.users
 set email_confirmed_at = coalesce(email_confirmed_at, now())
 where email = 'admin@gmail.com';
 
 insert into storage.buckets (id, name, public)
-values ('app-data', 'app-data', false)
-on conflict (id) do nothing;
+values ('app-data', 'app-data', true)
+on conflict (id) do update set public = true;
 
 insert into storage.buckets (id, name, public)
 values ('portfolio-images', 'portfolio-images', true)
